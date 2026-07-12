@@ -28,3 +28,4 @@ screenshots/
 recordings/
 reference/
 *.webp
+!public/*.webp

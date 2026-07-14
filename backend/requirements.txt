@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+websockets
+pandas
+numpy
+networkx
+scikit-learn
+torch --index-url https://download.pytorch.org/whl/cpu
+torch_geometric

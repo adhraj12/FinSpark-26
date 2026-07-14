@@ -366,72 +366,76 @@ function App() {
   const [systemMemory, setSystemMemory] = useState(85);
   const [systemDisk, setSystemDisk] = useState(51);
 
-  // Live wiggling simulation for Pipeline View
+  // WebSocket connection state
+  const [wsConnected, setWsConnected] = useState(false);
+
+  // Live streaming simulation for Pipeline View via WebSocket
   useEffect(() => {
     if (!pipelineAutoRefresh) return;
-
-    const interval = setInterval(() => {
+    
+    // Connect to FastAPI Backend WebSocket
+    const ws = new WebSocket('ws://localhost:8000/ws/stream');
+    
+    ws.onopen = () => {
+      setWsConnected(true);
+      setPipelineLogsList(prev => [
+        { time: new Date().toTimeString().split(' ')[0], level: 'SUCCESS', msg: 'WebSocket connected to QTD-HGNN Backend.' },
+        ...prev.slice(0, 14)
+      ]);
+    };
+    
+    ws.onclose = () => {
+      setWsConnected(false);
+      setPipelineLogsList(prev => [
+        { time: new Date().toTimeString().split(' ')[0], level: 'WARNING', msg: 'WebSocket connection lost.' },
+        ...prev.slice(0, 14)
+      ]);
+    };
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
       const now = new Date();
       const timeStr = now.toTimeString().split(' ')[0];
       setLastUpdateTime(timeStr);
 
-      // Increment events processed
-      setPipelineTotalEvents(prev => prev + Math.floor(Math.random() * 15) + 5);
-
-      // Trigger anomaly occasionally
-      const newAnomalyTriggered = Math.random() > 0.85;
-      if (newAnomalyTriggered) {
+      setPipelineTotalEvents(prev => prev + data.totalEvents);
+      
+      if (data.isAttackSpike) {
         setPipelineAnomalies(prev => prev + 1);
-        setPipelineHighRisk(prev => Math.min(45, prev + 1));
+        setPipelineHighRisk(data.activeThreats);
+      } else {
+        setPipelineHighRisk(Math.max(0, data.activeThreats));
       }
 
-      // Wiggle metric indicators
-      setPipelineAvgScore(prev => {
-        const next = prev + (Math.random() - 0.5) * 0.05;
-        return Number(Math.max(0.1, Math.min(1.0, next)).toFixed(2));
-      });
-      setPipelineLatency(prev => {
-        const next = prev + (Math.random() - 0.5) * 0.1;
-        return Number(Math.max(0.5, Math.min(3.0, next)).toFixed(2));
-      });
+      setPipelineAvgScore(Number((data.threatScore / 100).toFixed(2)));
+      setPipelineLatency(Number((data.latency / 10).toFixed(2)));
 
       // Update metrics sparklines
       setPipelineMetricCharts(prev => {
-        const updateSpark = (series, baseVal, variance) => {
+        const updateSpark = (series, nextVal) => {
           const newSeries = [...series.slice(1)];
-          const lastVal = newSeries[newSeries.length - 1].value;
-          const nextVal = lastVal + (Math.random() - 0.5) * variance;
           newSeries.push({ time: series.length, value: Number(nextVal.toFixed(2)) });
           return newSeries;
         };
         return {
-          events: updateSpark(prev.events, 0.78, 0.08),
-          anomalies: updateSpark(prev.anomalies, 0.55, 0.08),
-          entities: updateSpark(prev.entities, 0.42, 0.05),
-          score: updateSpark(prev.score, 0.78, 0.03),
-          latency: updateSpark(prev.latency, 1.32, 0.05)
+          events: updateSpark(prev.events, data.totalEvents / 10),
+          anomalies: updateSpark(prev.anomalies, data.activeThreats),
+          entities: updateSpark(prev.entities, data.activeThreats),
+          score: updateSpark(prev.score, data.threatScore / 100),
+          latency: updateSpark(prev.latency, data.latency / 10)
         };
       });
 
       // Update System resources load
-      setSystemCpu(prev => Math.max(10, Math.min(95, prev + Math.floor((Math.random() - 0.5) * 8))));
-      setSystemMemory(prev => Math.max(70, Math.min(98, prev + Math.floor((Math.random() - 0.5) * 2))));
+      setSystemCpu(prev => Math.max(10, Math.min(95, prev + Math.floor((Math.random() - 0.5) * 15))));
+      setSystemMemory(prev => Math.max(70, Math.min(98, prev + Math.floor((Math.random() - 0.5) * 5))));
 
-      // Append new logs occasionally
-      const logTemplates = [
-        { level: 'INFO', msg: 'Data ingestion active - processing next streaming chunk.' },
-        { level: 'INFO', msg: 'Simplex correlation matrices evaluated on local transaction subgraphs.' },
-        { level: 'INFO', msg: 'Graph constructed - 12,568 nodes, 45,231 edges' },
-        { level: 'INFO', msg: 'Attribution vectors completed for BGP routes.' },
-        { level: 'SUCCESS', msg: 'Pipeline execution batch verified. No latency spikes detected.' }
-      ];
-      if (newAnomalyTriggered) {
+      if (data.isAttackSpike) {
         setPipelineLogsList(prev => [
-          ...prev.slice(1),
-          { time: timeStr, level: 'WARNING', msg: 'High anomaly correlation detected on path [VPN -> SWIFT -> Mule IP].' }
+          { time: timeStr, level: 'WARNING', msg: `High anomaly correlation detected. Threat Score: ${data.threatScore.toFixed(1)}` },
+          ...prev.slice(0, 14)
         ]);
 
-        // Insert anomaly row in DataFrame
         const mockIP = `192.168.1.${Math.floor(Math.random() * 200) + 10}`;
         setPipelineDataRows(prev => [
           {
@@ -440,20 +444,19 @@ function App() {
             src: mockIP,
             dst: '10.0.0.8',
             amount: `${Math.floor(Math.random() * 80000 + 10000).toLocaleString()}`,
-            score: Number((Math.random() * 0.3 + 0.7).toFixed(2)),
-            features: 'SWIFT Routing, AS Hijack Alert',
+            score: Number((data.threatScore / 100).toFixed(2)),
+            features: `Betti-1: ${data.betti1.toFixed(2)}`,
             status: 'Anomaly'
           },
           ...prev.slice(0, 15)
         ]);
-      } else if (Math.random() > 0.65) {
-        const randTemplate = logTemplates[Math.floor(Math.random() * logTemplates.length)];
+      } else {
+        const msgStr = `Processed ${data.totalEvents} events. B0=${data.betti0.toFixed(1)} B1=${data.betti1.toFixed(1)} B2=${data.betti2.toFixed(1)}`;
         setPipelineLogsList(prev => [
-          ...prev.slice(1),
-          { time: timeStr, level: randTemplate.level, msg: randTemplate.msg }
+          { time: timeStr, level: 'INFO', msg: msgStr },
+          ...prev.slice(0, 14)
         ]);
 
-        // Insert normal row in DataFrame
         const mockIP = `192.168.1.${Math.floor(Math.random() * 200) + 10}`;
         setPipelineDataRows(prev => [
           {
@@ -462,7 +465,7 @@ function App() {
             src: mockIP,
             dst: '10.0.0.12',
             amount: `${Math.floor(Math.random() * 1500)}`,
-            score: Number((Math.random() * 0.3).toFixed(2)),
+            score: Number((data.threatScore / 100).toFixed(2)),
             features: 'Standard payload',
             status: 'Normal'
           },
@@ -473,23 +476,20 @@ function App() {
       // Add to charts history
       setPipelineThroughputHistory(prev => {
         const next = [...prev.slice(1)];
-        const lastVal = next[next.length - 1].value;
-        const nextVal = Math.max(300, Math.min(1000, lastVal + Math.floor((Math.random() - 0.5) * 120)));
-        next.push({ time: timeStr.substring(0, 5), value: nextVal });
+        next.push({ time: timeStr.substring(0, 5), value: data.totalEvents * 5 });
         return next;
       });
 
       setPipelineScoreHistory(prev => {
         const next = [...prev.slice(1)];
-        const lastVal = next[next.length - 1].value;
-        const nextVal = Number(Math.max(0.1, Math.min(1.0, lastVal + (Math.random() - 0.5) * 0.15)).toFixed(2));
-        next.push({ time: timeStr.substring(0, 5), value: nextVal });
+        next.push({ time: timeStr.substring(0, 5), value: Number((data.threatScore / 100).toFixed(2)) });
         return next;
       });
+    };
 
-    }, 2500);
-
-    return () => clearInterval(interval);
+    return () => {
+      ws.close();
+    };
   }, [pipelineAutoRefresh]);
 
   // Export report helper
@@ -1414,6 +1414,10 @@ function App() {
             </div>
 
             <div className="pl-header-right">
+              <div className="ws-status-badge" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '600', marginRight: '16px', color: wsConnected ? '#10b981' : '#ef4444', backgroundColor: wsConnected ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', padding: '4px 10px', borderRadius: '12px' }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: wsConnected ? '#10b981' : '#ef4444' }}></span>
+                {wsConnected ? 'LIVE SOCKET' : 'SOCKET OFFLINE'}
+              </div>
               <div className="pl-toggle-container">
                 <span className="pl-toggle-label">Auto-refresh</span>
                 <label className="pl-switch">

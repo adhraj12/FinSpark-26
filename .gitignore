@@ -29,3 +29,12 @@ recordings/
 reference/
 *.webp
 !public/*.webp
+
+# Python / Virtual Environment
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+

@@ -54,6 +54,7 @@ async def telemetry_streamer():
         try:
             if len(manager.active_connections) > 0:
                 payload = generate_telemetry()
+                print(f"Broadcasting telemetry to {len(manager.active_connections)} clients...")
                 await manager.broadcast(payload)
             # Sleep for 1.5 seconds to simulate real-time interval (similar to what React was doing)
             await asyncio.sleep(1.5)

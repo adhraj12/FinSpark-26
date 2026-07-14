@@ -394,6 +394,8 @@ function App() {
     
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log("WebSocket received data:", data);
+      
       const now = new Date();
       const timeStr = now.toTimeString().split(' ')[0];
       setLastUpdateTime(timeStr);

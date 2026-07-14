@@ -290,6 +290,8 @@ function App() {
     ]}
   ];
 
+  const [xaiSelectedTx, setXaiSelectedTx] = useState(1);
+
   // Explainable AI details based on selected node, or default global dashboard view
   const currentSimulationStep = simulationSteps[currentStep];
   const activeDashboardNode = selectedDashboardNode || graphNodes.find(n => n.id === (currentSimulationStep?.activeNodes[0] || 'swift'));
@@ -1343,7 +1345,9 @@ function App() {
                 <button 
                   key={item.id} 
                   className={`pl-nav-item ${isActive ? 'active' : ''}`}
-                  onClick={() => setPipelineTab(item.id)}
+                  onClick={() => {
+                    setPipelineTab(item.id);
+                  }}
                 >
                   <Icon size={14} />
                   <span>{item.label}</span>
@@ -1457,6 +1461,125 @@ function App() {
     );
   }
 
+  const renderXaiInsightsTab = () => {
+    // Mock dataset of transactions
+    const transactions = [
+      { id: 1, txId: 'TX-8392', label: 'Flagged: Malicious', amount: '$45,000', ip: '185.199.108.133',
+        features: [
+          { name: 'Packet Size Variance', value: 8.4, impact: 2.1, color: '#ef4444' }, // Pushed towards malicious
+          { name: 'Betti-1 (Cyclic Voids)', value: 4.2, impact: 1.8, color: '#ef4444' },
+          { name: 'Entropy', value: 0.89, impact: 1.2, color: '#ef4444' },
+          { name: 'Latency', value: '45ms', impact: -0.4, color: '#10b981' }, // Pushed towards benign
+          { name: 'Port Origin', value: 'Port 443', impact: -0.1, color: '#10b981' },
+        ],
+        baseVal: 15,
+        finalVal: 88
+      },
+      { id: 2, txId: 'TX-1042', label: 'Benign', amount: '$1,200', ip: '10.0.0.12',
+        features: [
+          { name: 'Packet Size Variance', value: 1.2, impact: -1.5, color: '#10b981' },
+          { name: 'Betti-1 (Cyclic Voids)', value: 0.1, impact: -2.1, color: '#10b981' },
+          { name: 'Entropy', value: 0.45, impact: -0.8, color: '#10b981' },
+          { name: 'Latency', value: '12ms', impact: -0.2, color: '#10b981' },
+          { name: 'Port Origin', value: 'Port 8080', impact: 0.5, color: '#ef4444' },
+        ],
+        baseVal: 15,
+        finalVal: 8
+      },
+    ];
+    
+    const tx = transactions.find(t => t.id === xaiSelectedTx) || transactions[0];
+    
+    return (
+      <div className="xai-insights-tab-view" style={{ padding: '24px', animation: 'fadeIn 0.5s' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: 600, color: '#0f172a', marginBottom: '8px' }}>Explainable AI (SHAP Analysis)</h2>
+        <p style={{ color: '#64748b', marginBottom: '24px', maxWidth: '800px' }}>
+          Demystifying the "Black Box". Select a transaction to instantly generate Shapley Additive exPlanations (SHAP) force plots, mathematically proving exactly which features caused the QTD-HGNN model to flag it.
+        </p>
+        
+        <div style={{ display: 'flex', gap: '24px', marginBottom: '32px' }}>
+          <div style={{ flex: 1, backgroundColor: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px' }}>Select Transaction</h3>
+            <select 
+              value={xaiSelectedTx}
+              onChange={(e) => setXaiSelectedTx(Number(e.target.value))}
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', fontSize: '16px', fontWeight: 500, outline: 'none', cursor: 'pointer' }}
+            >
+              {transactions.map(t => (
+                <option key={t.id} value={t.id}>{t.txId} - {t.label}</option>
+              ))}
+            </select>
+            
+            <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>Amount:</span>
+                <span style={{ fontWeight: 600, color: '#0f172a' }}>{tx.amount}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>Source IP:</span>
+                <span style={{ fontWeight: 600, color: '#0f172a' }}>{tx.ip}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>Model Confidence:</span>
+                <span style={{ fontWeight: 700, color: tx.finalVal > 50 ? '#ef4444' : '#10b981' }}>{tx.finalVal}%</span>
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ flex: 2, backgroundColor: 'white', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#0f172a', marginBottom: '4px' }}>SHAP Waterfall Plot</h3>
+            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '24px' }}>How specific features pushed the prediction from the baseline (15%) to the final score ({tx.finalVal}%).</p>
+            
+            <div style={{ position: 'relative', marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0', fontSize: '12px', fontWeight: 600, color: '#94a3b8' }}>
+                <span style={{ width: '150px' }}>FEATURE</span>
+                <span style={{ width: '80px', textAlign: 'center' }}>VALUE</span>
+                <span style={{ flex: 1 }}>SHAP VALUE (IMPACT)</span>
+              </div>
+              
+              {tx.features.map((f, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
+                  <span style={{ width: '150px', fontSize: '13px', fontWeight: 600, color: '#334155' }}>{f.name}</span>
+                  <span style={{ width: '80px', textAlign: 'center', fontSize: '13px', color: '#64748b', fontFamily: 'monospace' }}>{f.value}</span>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', position: 'relative', height: '24px' }}>
+                    {/* Neutral center line */}
+                    <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: '1px', backgroundColor: '#cbd5e1', zIndex: 1 }}></div>
+                    
+                    {/* The impact bar */}
+                    <div style={{ 
+                      position: 'absolute', 
+                      height: '16px', 
+                      backgroundColor: f.color, 
+                      borderRadius: '2px',
+                      opacity: 0.8,
+                      width: `${Math.abs(f.impact) * 15}%`,
+                      left: f.impact > 0 ? '50%' : `calc(50% - ${Math.abs(f.impact) * 15}%)`,
+                      zIndex: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: f.impact > 0 ? 'flex-end' : 'flex-start',
+                      padding: '0 6px',
+                      fontSize: '10px',
+                      color: 'white',
+                      fontWeight: 'bold'
+                    }}>
+                      {f.impact > 0 ? `+${f.impact}` : f.impact}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid #e2e8f0', marginTop: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>f(x) Final Prediction</span>
+                <span style={{ fontSize: '18px', fontWeight: 800, color: tx.finalVal > 50 ? '#ef4444' : '#10b981' }}>{tx.finalVal}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (currentView === 'dashboard') {
     return (
       <div className="soc-dashboard-app">
@@ -1569,7 +1692,9 @@ function App() {
           </header>
 
           {/* Tab Subviews */}
-          {dashboardTab !== 'Overview' && dashboardTab !== 'Threat Graph' && dashboardTab !== 'XAI Insights' && dashboardTab !== 'Quantum Monitor' ? (
+          {dashboardTab === 'XAI Insights' ? (
+            renderXaiInsightsTab()
+          ) : dashboardTab !== 'Overview' && dashboardTab !== 'Threat Graph' && dashboardTab !== 'Quantum Monitor' ? (
             <div className="tab-placeholder-view">
               <div className="placeholder-content">
                 <AlertCircle size={48} className="placeholder-icon" />

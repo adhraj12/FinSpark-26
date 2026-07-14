@@ -119,7 +119,6 @@ def generate_telemetry():
     }
     
     return payload
-
 if __name__ == "__main__":
     # Test the engine locally
     print("Testing GNN Engine...")

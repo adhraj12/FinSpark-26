@@ -6,7 +6,7 @@ import {
   Search, Bell, Plus, Minus, Maximize2, Pause, RefreshCw,
   AlertCircle, ArrowLeft, ExternalLink, HelpCircle
 } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts';
 import './App.css';
 
 // Initial data for Betti Curves
@@ -301,6 +301,1155 @@ function App() {
     { label: 'Credential Stuffing Source', value: 61, color: '#10b981' },
     { label: 'Behavioral Anomaly', value: 44, color: '#06b6d4' }
   ];
+
+  // --- Option 3 (Streamlit Pipeline Dashboard) State & Logic ---
+  const [pipelineTab, setPipelineTab] = useState('Overview');
+  const [pipelineAutoRefresh, setPipelineAutoRefresh] = useState(true);
+  const [lastUpdateTime, setLastUpdateTime] = useState('12:45:32');
+  const [pipelineTotalEvents, setPipelineTotalEvents] = useState(25805);
+  const [pipelineAnomalies, setPipelineAnomalies] = useState(156);
+  const [pipelineHighRisk, setPipelineHighRisk] = useState(23);
+  const [pipelineAvgScore, setPipelineAvgScore] = useState(0.78);
+  const [pipelineLatency, setPipelineLatency] = useState(1.32);
+  const [pipelineAnomalyThreshold, setPipelineAnomalyThreshold] = useState(0.65);
+  const [pipelineSensitivity, setPipelineSensitivity] = useState(82);
+  const [selectedPipelineNode, setSelectedPipelineNode] = useState(null);
+
+  // Live Data Explorer table state
+  const [pipelineDataRows, setPipelineDataRows] = useState([
+    { id: 1, time: '12:45:32', src: '192.168.1.45', dst: '10.0.0.8', amount: '25,400', score: 0.98, features: 'SWIFT MT103, VPN Anomaly', status: 'Anomaly' },
+    { id: 2, time: '12:45:30', src: 'user_ajohnson', dst: 'Internal VPN', amount: '0', score: 0.92, features: 'MFA Travel Anomaly', status: 'Anomaly' },
+    { id: 3, time: '12:45:25', src: '10.0.0.23', dst: '10.0.0.99', amount: '8,500', score: 0.76, features: 'Circular Mule Routing', status: 'Anomaly' },
+    { id: 4, time: '12:45:18', src: 'user_martin', dst: 'SWIFT Gate', amount: '120,000', score: 0.71, features: 'Timing Delay Drift', status: 'Anomaly' },
+    { id: 5, time: '12:45:10', src: '192.168.1.92', dst: '8.8.8.8', amount: '12', score: 0.23, features: 'Normal DNS lookup', status: 'Normal' },
+    { id: 6, time: '12:45:05', src: '192.168.1.11', dst: '10.0.0.1', amount: '450', score: 0.08, features: 'Standard EDR log', status: 'Normal' },
+    { id: 7, time: '12:44:58', src: '192.168.1.100', dst: '10.0.0.12', amount: '1,200', score: 0.12, features: 'Standard transaction', status: 'Normal' }
+  ]);
+
+  // Initial charts data history
+  const [pipelineThroughputHistory, setPipelineThroughputHistory] = useState([
+    { time: '11:45', value: 450 }, { time: '11:50', value: 680 }, { time: '11:55', value: 510 },
+    { time: '12:00', value: 810 }, { time: '12:05', value: 490 }, { time: '12:10', value: 720 },
+    { time: '12:15', value: 390 }, { time: '12:20', value: 850 }, { time: '12:25', value: 620 },
+    { time: '12:30', value: 780 }, { time: '12:35', value: 500 }, { time: '12:40', value: 740 },
+    { time: '12:45', value: 630 }
+  ]);
+
+  const [pipelineScoreHistory, setPipelineScoreHistory] = useState([
+    { time: '11:45', value: 0.42 }, { time: '11:50', value: 0.65 }, { time: '11:55', value: 0.38 },
+    { time: '12:00', value: 0.72 }, { time: '12:05', value: 0.48 }, { time: '12:10', value: 0.81 },
+    { time: '12:15', value: 0.32 }, { time: '12:20', value: 0.94 }, { time: '12:25', value: 0.55 },
+    { time: '12:30', value: 0.78 }, { time: '12:35', value: 0.49 }, { time: '12:40', value: 0.83 },
+    { time: '12:45', value: 0.76 }
+  ]);
+
+  const [pipelineLogsList, setPipelineLogsList] = useState([
+    { time: '12:45:30', level: 'INFO', msg: 'Data ingestion completed - 3 sources processed' },
+    { time: '12:45:31', level: 'INFO', msg: 'Preprocessing completed - 25,805 records normalized' },
+    { time: '12:45:31', level: 'INFO', msg: 'Graph constructed - 12,568 nodes, 45,231 edges' },
+    { time: '12:45:31', level: 'INFO', msg: 'Features engineered - 128 features generated' },
+    { time: '12:45:32', level: 'INFO', msg: 'Anomaly detection completed - 156 anomalies found' },
+    { time: '12:45:32', level: 'SUCCESS', msg: 'Pipeline execution completed successfully' }
+  ]);
+
+  // Sparkline/trend curves for metric boxes
+  const [pipelineMetricCharts, setPipelineMetricCharts] = useState({
+    events: generateInitialData(0.78, 0.08),
+    anomalies: generateInitialData(0.55, 0.1),
+    entities: generateInitialData(0.42, 0.05),
+    score: generateInitialData(0.78, 0.08),
+    latency: generateInitialData(1.32, 0.15)
+  });
+
+  // Resource loads
+  const [systemCpu, setSystemCpu] = useState(42);
+  const [systemMemory, setSystemMemory] = useState(85);
+  const [systemDisk, setSystemDisk] = useState(51);
+
+  // Live wiggling simulation for Pipeline View
+  useEffect(() => {
+    if (!pipelineAutoRefresh) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0];
+      setLastUpdateTime(timeStr);
+
+      // Increment events processed
+      setPipelineTotalEvents(prev => prev + Math.floor(Math.random() * 15) + 5);
+
+      // Trigger anomaly occasionally
+      const newAnomalyTriggered = Math.random() > 0.85;
+      if (newAnomalyTriggered) {
+        setPipelineAnomalies(prev => prev + 1);
+        setPipelineHighRisk(prev => Math.min(45, prev + 1));
+      }
+
+      // Wiggle metric indicators
+      setPipelineAvgScore(prev => {
+        const next = prev + (Math.random() - 0.5) * 0.05;
+        return Number(Math.max(0.1, Math.min(1.0, next)).toFixed(2));
+      });
+      setPipelineLatency(prev => {
+        const next = prev + (Math.random() - 0.5) * 0.1;
+        return Number(Math.max(0.5, Math.min(3.0, next)).toFixed(2));
+      });
+
+      // Update metrics sparklines
+      setPipelineMetricCharts(prev => {
+        const updateSpark = (series, baseVal, variance) => {
+          const newSeries = [...series.slice(1)];
+          const lastVal = newSeries[newSeries.length - 1].value;
+          const nextVal = lastVal + (Math.random() - 0.5) * variance;
+          newSeries.push({ time: series.length, value: Number(nextVal.toFixed(2)) });
+          return newSeries;
+        };
+        return {
+          events: updateSpark(prev.events, 0.78, 0.08),
+          anomalies: updateSpark(prev.anomalies, 0.55, 0.08),
+          entities: updateSpark(prev.entities, 0.42, 0.05),
+          score: updateSpark(prev.score, 0.78, 0.03),
+          latency: updateSpark(prev.latency, 1.32, 0.05)
+        };
+      });
+
+      // Update System resources load
+      setSystemCpu(prev => Math.max(10, Math.min(95, prev + Math.floor((Math.random() - 0.5) * 8))));
+      setSystemMemory(prev => Math.max(70, Math.min(98, prev + Math.floor((Math.random() - 0.5) * 2))));
+
+      // Append new logs occasionally
+      const logTemplates = [
+        { level: 'INFO', msg: 'Data ingestion active - processing next streaming chunk.' },
+        { level: 'INFO', msg: 'Simplex correlation matrices evaluated on local transaction subgraphs.' },
+        { level: 'INFO', msg: 'Graph constructed - 12,568 nodes, 45,231 edges' },
+        { level: 'INFO', msg: 'Attribution vectors completed for BGP routes.' },
+        { level: 'SUCCESS', msg: 'Pipeline execution batch verified. No latency spikes detected.' }
+      ];
+      if (newAnomalyTriggered) {
+        setPipelineLogsList(prev => [
+          ...prev.slice(1),
+          { time: timeStr, level: 'WARNING', msg: 'High anomaly correlation detected on path [VPN -> SWIFT -> Mule IP].' }
+        ]);
+
+        // Insert anomaly row in DataFrame
+        const mockIP = `192.168.1.${Math.floor(Math.random() * 200) + 10}`;
+        setPipelineDataRows(prev => [
+          {
+            id: Date.now(),
+            time: timeStr,
+            src: mockIP,
+            dst: '10.0.0.8',
+            amount: `${Math.floor(Math.random() * 80000 + 10000).toLocaleString()}`,
+            score: Number((Math.random() * 0.3 + 0.7).toFixed(2)),
+            features: 'SWIFT Routing, AS Hijack Alert',
+            status: 'Anomaly'
+          },
+          ...prev.slice(0, 15)
+        ]);
+      } else if (Math.random() > 0.65) {
+        const randTemplate = logTemplates[Math.floor(Math.random() * logTemplates.length)];
+        setPipelineLogsList(prev => [
+          ...prev.slice(1),
+          { time: timeStr, level: randTemplate.level, msg: randTemplate.msg }
+        ]);
+
+        // Insert normal row in DataFrame
+        const mockIP = `192.168.1.${Math.floor(Math.random() * 200) + 10}`;
+        setPipelineDataRows(prev => [
+          {
+            id: Date.now(),
+            time: timeStr,
+            src: mockIP,
+            dst: '10.0.0.12',
+            amount: `${Math.floor(Math.random() * 1500)}`,
+            score: Number((Math.random() * 0.3).toFixed(2)),
+            features: 'Standard payload',
+            status: 'Normal'
+          },
+          ...prev.slice(0, 15)
+        ]);
+      }
+
+      // Add to charts history
+      setPipelineThroughputHistory(prev => {
+        const next = [...prev.slice(1)];
+        const lastVal = next[next.length - 1].value;
+        const nextVal = Math.max(300, Math.min(1000, lastVal + Math.floor((Math.random() - 0.5) * 120)));
+        next.push({ time: timeStr.substring(0, 5), value: nextVal });
+        return next;
+      });
+
+      setPipelineScoreHistory(prev => {
+        const next = [...prev.slice(1)];
+        const lastVal = next[next.length - 1].value;
+        const nextVal = Number(Math.max(0.1, Math.min(1.0, lastVal + (Math.random() - 0.5) * 0.15)).toFixed(2));
+        next.push({ time: timeStr.substring(0, 5), value: nextVal });
+        return next;
+      });
+
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [pipelineAutoRefresh]);
+
+  // Export report helper
+  const handleExportReport = () => {
+    alert(`Successfully generated QTD-HGNN threat audit report.\n- Format: PDF/CSV\n- Events Processed: ${pipelineTotalEvents}\n- Anomalies Identified: ${pipelineAnomalies}\nReport downloaded as artifact.`);
+  };
+
+  // --- Subviews renders for Pipeline View ---
+  const renderPipelineOverview = () => {
+    const pipeNodes = [
+      { id: 'c', label: 'Alert Center', x: 230, y: 140, size: 28, color: '#ef4444', isAlert: true },
+      { id: 'u1', label: 'user_ajohnson', x: 190, y: 70, size: 14, color: '#a78bfa' },
+      { id: 'u2', label: 'user_martin', x: 230, y: 55, size: 14, color: '#a78bfa' },
+      { id: 'u3', label: 'user_kyle', x: 270, y: 70, size: 14, color: '#a78bfa' },
+      { id: 'u4', label: 'admin_sys', x: 250, y: 100, size: 14, color: '#a78bfa' },
+      { id: 'ip1', label: '192.168.1.45', x: 120, y: 155, size: 12, color: '#3b82f6' },
+      { id: 'ip2', label: '10.0.0.23', x: 140, y: 115, size: 12, color: '#3b82f6' },
+      { id: 'ip3', label: '10.0.0.8', x: 160, y: 185, size: 12, color: '#3b82f6' },
+      { id: 'ip4', label: '185.220.101.4', x: 100, y: 195, size: 12, color: '#3b82f6' },
+      { id: 'ip5', label: '172.16.8.5', x: 178, y: 220, size: 12, color: '#3b82f6' },
+      { id: 't1', label: 'TXN_4821', x: 210, y: 230, size: 14, color: '#10b981' },
+      { id: 't2', label: 'TXN_8849', x: 245, y: 250, size: 14, color: '#10b981' },
+      { id: 't3', label: 'TXN_1092', x: 270, y: 215, size: 14, color: '#10b981' },
+      { id: 'd1', label: 'Optical Delay', x: 310, y: 175, size: 12, color: '#f59e0b' },
+      { id: 'd2', label: 'Router AS-99', x: 335, y: 140, size: 12, color: '#f59e0b' },
+      { id: 'd3', label: 'Terminal Gateway', x: 345, y: 105, size: 12, color: '#f59e0b' },
+      { id: 'd4', label: 'Core Switch B', x: 300, y: 120, size: 12, color: '#f59e0b' },
+    ];
+
+    const pipeLinks = [
+      { from: 'c', to: 'u4' }, { from: 'c', to: 'ip2' }, { from: 'c', to: 't1' }, { from: 'c', to: 'd4' },
+      { from: 'u1', to: 'u4' }, { from: 'u2', to: 'u4' }, { from: 'u3', to: 'u4' },
+      { from: 'ip1', to: 'ip2' }, { from: 'ip3', to: 'ip2' }, { from: 'ip4', to: 'ip1' }, { from: 'ip5', to: 'ip3' },
+      { from: 't1', to: 'ip3' }, { from: 't2', to: 't1' }, { from: 't3', to: 'd4' },
+      { from: 'd1', to: 'd4' }, { from: 'd2', to: 'd4' }, { from: 'd3', to: 'd4' },
+    ];
+
+    const activeNode = selectedPipelineNode || pipeNodes.find(n => n.id === 'c');
+
+    return (
+      <div className="pl-content-grid">
+        {/* KPI Metrics Row */}
+        <div className="pl-metrics-row">
+          <div className="pl-metric-card">
+            <div className="pl-metric-left">
+              <span className="pl-metric-label">Total Events Processed</span>
+              <h2 className="pl-metric-value">{pipelineTotalEvents.toLocaleString()}</h2>
+              <span className="pl-metric-trend down">↓ 18.6% vs last hour</span>
+            </div>
+            <div className="pl-metric-right">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={pipelineMetricCharts.events}>
+                  <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={1} fill="rgba(59, 130, 246, 0.05)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="pl-metric-card">
+            <div className="pl-metric-left">
+              <span className="pl-metric-label">Anomalies Detected</span>
+              <h2 className="pl-metric-value">{pipelineAnomalies}</h2>
+              <span className="pl-metric-trend up">↑ 32.4% vs last hour</span>
+            </div>
+            <div className="pl-metric-right">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={pipelineMetricCharts.anomalies}>
+                  <Area type="monotone" dataKey="value" stroke="#ef4444" strokeWidth={1} fill="rgba(239, 68, 68, 0.05)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="pl-metric-card">
+            <div className="pl-metric-left">
+              <span className="pl-metric-label">High Risk Entities</span>
+              <h2 className="pl-metric-value">{pipelineHighRisk}</h2>
+              <span className="pl-metric-trend up">↑ 27.8% vs last hour</span>
+            </div>
+            <div className="pl-metric-right">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={pipelineMetricCharts.entities}>
+                  <Area type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={1} fill="rgba(139, 92, 246, 0.05)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="pl-metric-card">
+            <div className="pl-metric-left">
+              <span className="pl-metric-label">Avg. Anomaly Score</span>
+              <h2 className="pl-metric-value">{pipelineAvgScore}</h2>
+              <span className="pl-metric-trend up">↑ 0.12 vs last hour</span>
+            </div>
+            <div className="pl-metric-right">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={pipelineMetricCharts.score}>
+                  <Area type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={1} fill="rgba(245, 158, 11, 0.05)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="pl-metric-card">
+            <div className="pl-metric-left">
+              <span className="pl-metric-label">Pipeline Latency</span>
+              <h2 className="pl-metric-value">{pipelineLatency}s</h2>
+              <span className="pl-metric-trend down">↓ 0.28s vs last hour</span>
+            </div>
+            <div className="pl-metric-right">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={pipelineMetricCharts.latency}>
+                  <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={1} fill="rgba(16, 185, 129, 0.05)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 1: Graph + Charts */}
+        <div className="pl-row-grid-2">
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Threat Relationship Graph</h3>
+              <div className="pl-card-controls">
+                <button className="pl-btn-ctrl"><Plus size={11} /></button>
+                <button className="pl-btn-ctrl"><Minus size={11} /></button>
+                <button className="pl-btn-ctrl"><Maximize2 size={11} /></button>
+              </div>
+            </div>
+
+            <div className="db-graph-legend" style={{ border: 'none', padding: 0, marginBottom: 10 }}>
+              <span className="db-legend-item"><span className="db-legend-dot" style={{ backgroundColor: '#3b82f6' }}></span>IP Address</span>
+              <span className="db-legend-item"><span className="db-legend-dot" style={{ backgroundColor: '#a78bfa' }}></span>User</span>
+              <span className="db-legend-item"><span className="db-legend-dot" style={{ backgroundColor: '#10b981' }}></span>Transaction</span>
+              <span className="db-legend-item"><span className="db-legend-dot" style={{ backgroundColor: '#f59e0b' }}></span>Device</span>
+              <span className="db-legend-item"><span className="db-legend-dot" style={{ backgroundColor: '#ef4444' }}></span>Alert</span>
+            </div>
+
+            <div className="pl-graph-container">
+              <svg viewBox="0 0 450 270" style={{ width: '100%', height: '100%' }}>
+                {pipeLinks.map((link, idx) => {
+                  const fromNode = pipeNodes.find(n => n.id === link.from);
+                  const toNode = pipeNodes.find(n => n.id === link.to);
+                  if (!fromNode || !toNode) return null;
+                  return (
+                    <line 
+                      key={idx} 
+                      x1={fromNode.x} 
+                      y1={fromNode.y} 
+                      x2={toNode.x} 
+                      y2={toNode.y} 
+                      stroke="#e2e8f0" 
+                      strokeWidth={1.5} 
+                    />
+                  );
+                })}
+
+                {pipeNodes.map(node => (
+                  <g 
+                    key={node.id} 
+                    transform={`translate(${node.x}, ${node.y})`} 
+                    onClick={() => setSelectedPipelineNode(node)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {node.isAlert ? (
+                      <polygon 
+                        points="0,-14 14,10 -14,10" 
+                        fill="#ef4444" 
+                        stroke="#ffffff" 
+                        strokeWidth={2}
+                        className="pulse-ring"
+                      />
+                    ) : (
+                      <circle 
+                        r={node.id === activeNode.id ? 8 : 6} 
+                        fill={node.color} 
+                        stroke="#ffffff" 
+                        strokeWidth={1.5}
+                      />
+                    )}
+                    {node.isAlert && (
+                      <text y={4} textAnchor="middle" fill="#ffffff" fontSize={8} fontWeight="bold">!</text>
+                    )}
+                    {(node.id === activeNode.id || node.isAlert) && (
+                      <text 
+                        y={node.isAlert ? 22 : 16} 
+                        textAnchor="middle" 
+                        fill="#0f172a" 
+                        fontSize={8.5} 
+                        fontWeight="bold"
+                      >
+                        {node.label}
+                      </text>
+                    )}
+                  </g>
+                ))}
+              </svg>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="pl-card" style={{ flex: 1 }}>
+              <div className="pl-card-header">
+                <h3 className="pl-card-title">Anomaly Score Over Time</h3>
+              </div>
+              <div style={{ width: '100%', height: 100 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={pipelineScoreHistory} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="scoreColor" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#a78bfa" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="time" tick={{ fontSize: 9 }} />
+                    <YAxis domain={[0, 1.0]} tick={{ fontSize: 9 }} />
+                    <Tooltip />
+                    <ReferenceLine y={pipelineAnomalyThreshold} stroke="#ef4444" strokeDasharray="3 3" label={{ value: 'High Risk Threshold', fill: '#ef4444', fontSize: 8, position: 'insideTopRight' }} />
+                    <Area type="monotone" dataKey="value" stroke="#8b5cf6" strokeWidth={1.5} fillOpacity={1} fill="url(#scoreColor)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="pl-card">
+                <div className="pl-card-header">
+                  <h3 className="pl-card-title">Top Anomalous Entities</h3>
+                </div>
+                <div style={{ width: '100%', height: 95 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      layout="vertical" 
+                      data={[
+                        { name: '192.168.1.45', value: 0.98, fill: '#ef4444' },
+                        { name: 'user_ajohnson', value: 0.92, fill: '#f59e0b' },
+                        { name: 'SWIFT:MT103', value: 0.88, fill: '#f59e0b' },
+                        { name: '10.0.0.23', value: 0.76, fill: '#3b82f6' },
+                        { name: 'user_martin', value: 0.71, fill: '#3b82f6' },
+                      ]}
+                      margin={{ top: 0, right: 5, left: -25, bottom: 0 }}
+                    >
+                      <XAxis type="number" domain={[0, 1.0]} tick={{ fontSize: 8 }} />
+                      <YAxis dataKey="name" type="category" tick={{ fontSize: 8 }} width={60} />
+                      <Tooltip />
+                      <Bar dataKey="value" barSize={8} radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="pl-card">
+                <div className="pl-card-header">
+                  <h3 className="pl-card-title">Anomaly Score Distribution</h3>
+                </div>
+                <div style={{ width: '100%', height: 95 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={[
+                        { range: '0.1', count: 80 }, { range: '0.2', count: 120 }, { range: '0.3', count: 320 },
+                        { range: '0.4', count: 480 }, { range: '0.5', count: 240 }, { range: '0.6', count: 160 },
+                        { range: '0.7', count: 90 }, { range: '0.8', count: 40 }, { range: '0.9', count: 20 },
+                      ]}
+                      margin={{ top: 5, right: 5, left: -25, bottom: 0 }}
+                    >
+                      <XAxis dataKey="range" tick={{ fontSize: 8 }} />
+                      <YAxis tick={{ fontSize: 8 }} />
+                      <Tooltip />
+                      <ReferenceLine x="0.7" stroke="#ef4444" strokeDasharray="3 3" />
+                      <Bar dataKey="count" fill="#818cf8" barSize={10} radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Throughput + Donut + Features + Matrix */}
+        <div className="pl-row-grid-4">
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Pipeline Throughput</h3>
+            </div>
+            <div style={{ width: '100%', height: 140 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={pipelineThroughputHistory} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="thruColor" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="time" tick={{ fontSize: 9 }} />
+                  <YAxis tick={{ fontSize: 9 }} />
+                  <Tooltip />
+                  <Area type="monotone" dataKey="value" stroke="#10b981" strokeWidth={1.5} fillOpacity={1} fill="url(#thruColor)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Data Source Contribution</h3>
+            </div>
+            <div className="pl-donut-wrapper">
+              <svg width="60" height="60" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="4" />
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#3b82f6" strokeWidth="4" strokeDasharray="59 41" strokeDashoffset="25" />
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#10b981" strokeWidth="4" strokeDasharray="32 68" strokeDashoffset="-34" />
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f59e0b" strokeWidth="4" strokeDasharray="9 91" strokeDashoffset="-66" />
+                <text x="18" y="20.5" textAnchor="middle" fontSize="6.5" fontWeight="bold" fill="#0f172a">59%</text>
+              </svg>
+
+              <div className="pl-donut-legend">
+                <div className="pl-donut-legend-item"><span className="pl-donut-dot blue"></span>Txns (59%)</div>
+                <div className="pl-donut-legend-item"><span className="pl-donut-dot green"></span>EDR (32%)</div>
+                <div className="pl-donut-legend-item"><span className="pl-donut-dot orange"></span>BGP (9%)</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Feature Importance (Top 10)</h3>
+            </div>
+            <div style={{ width: '100%', height: 140 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  layout="vertical" 
+                  data={[
+                    { name: 'amount', value: 0.82, fill: '#6366f1' },
+                    { name: 'unique_dest', value: 0.70, fill: '#6366f1' },
+                    { name: 'failed_log', value: 0.65, fill: '#6366f1' },
+                    { name: 'distance', value: 0.58, fill: '#818cf8' },
+                    { name: 'time_since', value: 0.51, fill: '#818cf8' },
+                  ]}
+                  margin={{ top: 0, right: 5, left: -25, bottom: 0 }}
+                >
+                  <XAxis type="number" domain={[0, 1.0]} tick={{ fontSize: 8 }} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 8 }} width={60} />
+                  <Bar dataKey="value" barSize={7} radius={[0, 2, 2, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Anomaly Correlation Matrix</h3>
+            </div>
+            <div className="pl-heatmap-container">
+              {[
+                { label: 'IP', cells: [
+                  { val: 1.0, color: 'rgba(59, 130, 246, 0.95)' }, { val: 0.4, color: 'rgba(59, 130, 246, 0.4)' },
+                  { val: 0.6, color: 'rgba(59, 130, 246, 0.6)' }, { val: 0.2, color: 'rgba(59, 130, 246, 0.2)' },
+                  { val: 0.8, color: 'rgba(59, 130, 246, 0.8)' },
+                ]},
+                { label: 'User', cells: [
+                  { val: 0.4, color: 'rgba(59, 130, 246, 0.4)' }, { val: 1.0, color: 'rgba(59, 130, 246, 0.95)' },
+                  { val: 0.7, color: 'rgba(59, 130, 246, 0.7)' }, { val: 0.3, color: 'rgba(59, 130, 246, 0.3)' },
+                  { val: 0.5, color: 'rgba(59, 130, 246, 0.5)' },
+                ]},
+                { label: 'Txn', cells: [
+                  { val: 0.6, color: 'rgba(59, 130, 246, 0.6)' }, { val: 0.7, color: 'rgba(59, 130, 246, 0.7)' },
+                  { val: 1.0, color: 'rgba(59, 130, 246, 0.95)' }, { val: 0.1, color: 'rgba(59, 130, 246, 0.1)' },
+                  { val: 0.9, color: 'rgba(59, 130, 246, 0.9)' },
+                ]},
+                { label: 'Device', cells: [
+                  { val: 0.2, color: 'rgba(59, 130, 246, 0.2)' }, { val: 0.3, color: 'rgba(59, 130, 246, 0.3)' },
+                  { val: 0.1, color: 'rgba(59, 130, 246, 0.1)' }, { val: 1.0, color: 'rgba(59, 130, 246, 0.95)' },
+                  { val: 0.4, color: 'rgba(59, 130, 246, 0.4)' },
+                ]},
+                { label: 'Alert', cells: [
+                  { val: 0.8, color: 'rgba(59, 130, 246, 0.8)' }, { val: 0.5, color: 'rgba(59, 130, 246, 0.5)' },
+                  { val: 0.9, color: 'rgba(59, 130, 246, 0.9)' }, { val: 0.4, color: 'rgba(59, 130, 246, 0.4)' },
+                  { val: 1.0, color: 'rgba(59, 130, 246, 0.95)' },
+                ]}
+              ].map((row, idx) => (
+                <div className="pl-heatmap-row" key={idx}>
+                  <span className="pl-heatmap-label-y">{row.label}</span>
+                  {row.cells.map((cell, cidx) => (
+                    <div 
+                      key={cidx} 
+                      className="pl-heatmap-cell" 
+                      style={{ backgroundColor: cell.color, color: cell.val > 0.6 ? '#ffffff' : '#0f172a' }}
+                    >
+                      {cell.val}
+                    </div>
+                  ))}
+                </div>
+              ))}
+              <div className="pl-heatmap-x-labels">
+                <span className="pl-heatmap-label-x">IP</span>
+                <span className="pl-heatmap-label-x">User</span>
+                <span className="pl-heatmap-label-x">Txn</span>
+                <span className="pl-heatmap-label-x">Device</span>
+                <span className="pl-heatmap-label-x">Alert</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3: Logs, Alerts & Gauges */}
+        <div className="pl-row-grid-3">
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Pipeline Execution Log</h3>
+            </div>
+            <div className="pl-terminal-log">
+              {pipelineLogsList.map((log, idx) => (
+                <div key={idx} className={`terminal-line ${log.level === 'SUCCESS' ? 'success' : log.level === 'WARNING' ? 'warning' : 'info'}`}>
+                  {log.time} [{log.level}] {log.msg}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Recent Alerts</h3>
+            </div>
+            <div className="db-alerts-list" style={{ maxHeight: 130 }}>
+              <div className="db-alert-item active critical">
+                <div className="alert-item-left">
+                  <span className="alert-severity-dot critical"></span>
+                  <div className="alert-text">
+                    <span className="alert-title">SWIFT MT103 Anomaly</span>
+                    <span className="alert-desc">Injected wire transfer pattern</span>
+                  </div>
+                </div>
+                <span className="alert-time">2m ago</span>
+              </div>
+              <div className="db-alert-item active critical">
+                <div className="alert-item-left">
+                  <span className="alert-severity-dot critical"></span>
+                  <div className="alert-text">
+                    <span className="alert-title">MFA Bypass: ajohnson</span>
+                    <span className="alert-desc">Impossible travel velocity route</span>
+                  </div>
+                </div>
+                <span className="alert-time">5m ago</span>
+              </div>
+              <div className="db-alert-item active high">
+                <div className="alert-item-left">
+                  <span className="alert-severity-dot high"></span>
+                  <div className="alert-text">
+                    <span className="alert-title">BGP route hijack suspected</span>
+                    <span className="alert-desc">Autonomous System detour route</span>
+                  </div>
+                </div>
+                <span className="alert-time">8m ago</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">System Resources</h3>
+            </div>
+            <div className="pl-resources-container">
+              <div className="pl-gauge-item">
+                <div className="pl-gauge-circle">
+                  <svg width="55" height="55" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#10b981" strokeWidth="3" strokeDasharray="100" strokeDashoffset={100 - systemCpu} strokeLinecap="round" />
+                  </svg>
+                  <span className="pl-gauge-value">{systemCpu}%</span>
+                </div>
+                <span className="pl-gauge-label">CPU</span>
+              </div>
+
+              <div className="pl-gauge-item">
+                <div className="pl-gauge-circle">
+                  <svg width="55" height="55" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#f59e0b" strokeWidth="3" strokeDasharray="100" strokeDashoffset={100 - systemMemory} strokeLinecap="round" />
+                  </svg>
+                  <span className="pl-gauge-value">{systemMemory}%</span>
+                </div>
+                <span className="pl-gauge-label">Memory</span>
+              </div>
+
+              <div className="pl-gauge-item">
+                <div className="pl-gauge-circle">
+                  <svg width="55" height="55" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="#3b82f6" strokeWidth="3" strokeDasharray="100" strokeDashoffset={100 - systemDisk} strokeLinecap="round" />
+                  </svg>
+                  <span className="pl-gauge-value">{systemDisk}%</span>
+                </div>
+                <span className="pl-gauge-label">Disk</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'center', fontSize: 11, color: '#94a3b8', marginTop: 10, paddingBottom: 10 }}>
+          Built with ❤️ using Streamlit, Python, NetworkX, Pandas, and Plotly
+        </div>
+      </div>
+    );
+  };
+
+  const renderPipelineDataExplorer = () => {
+    return (
+      <div className="pl-content-grid">
+        <div className="pl-card">
+          <div className="pl-card-header">
+            <h3 className="pl-card-title">Live Pandas DataFrame</h3>
+          </div>
+          
+          <div className="pl-dataframe-container">
+            <table className="pl-dataframe">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Source Entity</th>
+                  <th>Destination Entity</th>
+                  <th>Amount (USD)</th>
+                  <th>Anomaly Score</th>
+                  <th>Triggered Rules</th>
+                  <th>Classification</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pipelineDataRows.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.time}</td>
+                    <td><strong>{row.src}</strong></td>
+                    <td>{row.dst}</td>
+                    <td>${row.amount}</td>
+                    <td>{row.score}</td>
+                    <td style={{ color: '#64748b', fontSize: 11.5 }}>{row.features}</td>
+                    <td>
+                      <span className={`df-badge ${row.status === 'Anomaly' ? 'anomaly' : 'normal'}`}>
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPipelineGraphAnalytics = () => {
+    return (
+      <div className="pl-content-grid">
+        <div className="pl-row-grid-2">
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">NetworkX Graph Topology Statistics</h3>
+            </div>
+            <table className="pl-stats-table">
+              <tbody>
+                <tr><td><strong>Total Network Nodes</strong></td><td>12,568</td></tr>
+                <tr><td><strong>Total Network Edges</strong></td><td>45,231</td></tr>
+                <tr><td><strong>Average Node Degree</strong></td><td>7.20</td></tr>
+                <tr><td><strong>Graph Density</strong></td><td>0.00057</td></tr>
+                <tr><td><strong>Connected Components</strong></td><td>1</td></tr>
+                <tr><td><strong>Network Diameter</strong></td><td>8</td></tr>
+                <tr><td><strong>Average Clustering Coefficient</strong></td><td>0.345</td></tr>
+                <tr><td><strong>Average Shortest Path</strong></td><td>3.45s</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Node Degree Centrality (Top 5)</h3>
+            </div>
+            <div style={{ width: '100%', height: 180 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={[
+                    { name: 'Core Switch B', value: 92, fill: '#ff4b4b' },
+                    { name: 'SWIFT Gate', value: 84, fill: '#8b5cf6' },
+                    { name: '10.0.0.8', value: 68, fill: '#3b82f6' },
+                    { name: '10.0.0.23', value: 54, fill: '#3b82f6' },
+                    { name: 'user_ajohnson', value: 41, fill: '#10b981' },
+                  ]}
+                  margin={{ top: 10, right: 5, left: -25, bottom: 0 }}
+                >
+                  <XAxis dataKey="name" tick={{ fontSize: 9 }} />
+                  <YAxis tick={{ fontSize: 9 }} />
+                  <Tooltip />
+                  <Bar dataKey="value" barSize={24} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPipelineAnomalyDetection = () => {
+    return (
+      <div className="pl-content-grid">
+        <div className="pl-row-grid-2">
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Quantum-Inspired Hypergraph Scorer</h3>
+            </div>
+            <div className="pl-config-row">
+              <div className="pl-config-item">
+                <label>Decision Boundary (Threshold): <strong>{pipelineAnomalyThreshold}</strong></label>
+                <input 
+                  type="range" 
+                  min="0.1" 
+                  max="0.95" 
+                  step="0.05" 
+                  value={pipelineAnomalyThreshold} 
+                  onChange={e => setPipelineAnomalyThreshold(Number(e.target.value))}
+                  className="pl-slider-input"
+                />
+                <span style={{ fontSize: 11, color: '#64748b' }}>Scores above this threshold will flag transaction entities as high risk anomalies.</span>
+              </div>
+
+              <div className="pl-config-item">
+                <label>Model Sensitivity (Betti Numbers weights): <strong>{pipelineSensitivity}%</strong></label>
+                <input 
+                  type="range" 
+                  min="10" 
+                  max="100" 
+                  step="2" 
+                  value={pipelineSensitivity} 
+                  onChange={e => setPipelineSensitivity(Number(e.target.value))}
+                  className="pl-slider-input"
+                />
+              </div>
+
+              <div className="pl-config-item" style={{ marginTop: 10 }}>
+                <label style={{ marginBottom: 6 }}>Active Detection Rules</label>
+                <label className="pl-checkbox-label">
+                  <input type="checkbox" defaultChecked />
+                  <span>HNDL Out-of-Sequence Wire transfers</span>
+                </label>
+                <label className="pl-checkbox-label">
+                  <input type="checkbox" defaultChecked />
+                  <span>MFA Impossible travel velocity</span>
+                </label>
+                <label className="pl-checkbox-label">
+                  <input type="checkbox" defaultChecked />
+                  <span>BGP AS Detour route routing</span>
+                </label>
+                <label className="pl-checkbox-label">
+                  <input type="checkbox" defaultChecked />
+                  <span>Physical fiber nanosecond delay fluctuation</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Real-time Pipeline Control</h3>
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.5, color: '#334155', textAlign: 'left' }}>
+              <p>This panel triggers manual operations directly in the Python stream listener.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+                <button className="pl-btn-action-trigger" style={{ backgroundColor: '#10b981' }} onClick={() => {
+                  setPipelineTotalEvents(prev => prev + 100);
+                  alert('Re-indexed 100 recent transactions.');
+                }}>
+                  Force Re-Index Transaction Logs
+                </button>
+                <button className="pl-btn-action-trigger" style={{ backgroundColor: '#8b5cf6' }} onClick={() => {
+                  alert('Rebuilding hypergraph nodes from NetworkX cache. Time taken: 42ms');
+                }}>
+                  Clear Graph Topology Cache
+                </button>
+                <button className="pl-btn-action-trigger" style={{ backgroundColor: '#64748b' }} onClick={() => {
+                  setPipelineLogsList([]);
+                  alert('Terminal logger cleared.');
+                }}>
+                  Flush Execution Logs
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPipelineModelInsights = () => {
+    return (
+      <div className="pl-content-grid">
+        <div className="pl-row-grid-2">
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Global Feature Attribution Weights (SHAP)</h3>
+            </div>
+            <div className="pl-weights-list">
+              {[
+                { label: 'transaction_amount', val: 94 },
+                { label: 'route_distance_variance', val: 82 },
+                { label: 'failed_logins_frequency', val: 78 },
+                { label: 'mfa_failure_streak', val: 64 },
+                { label: 'routing_hop_count_anomaly', val: 51 },
+                { label: 'session_duration_decay', val: 38 },
+                { label: 'mac_vendor_unlisted_flag', val: 22 },
+              ].map((w, idx) => (
+                <div className="pl-weight-item" key={idx}>
+                  <div className="pl-weight-header">
+                    <span>{w.label}</span>
+                    <strong>{w.val}%</strong>
+                  </div>
+                  <div className="pl-weight-bar-bg">
+                    <div className="pl-weight-bar-fg" style={{ width: `${w.val}%` }}></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pl-card">
+            <div className="pl-card-header">
+              <h3 className="pl-card-title">Quantum-Topological Validation Metrics</h3>
+            </div>
+            <table className="pl-stats-table">
+              <tbody>
+                <tr><td><strong>Model Accuracy</strong></td><td><strong style={{ color: '#10b981' }}>98.2%</strong></td></tr>
+                <tr><td><strong>Model Precision</strong></td><td><strong style={{ color: '#10b981' }}>99.1%</strong></td></tr>
+                <tr><td><strong>Model Recall</strong></td><td><strong style={{ color: '#10b981' }}>97.3%</strong></td></tr>
+                <tr><td><strong>F1 Score</strong></td><td><strong style={{ color: '#10b981' }}>98.2%</strong></td></tr>
+                <tr><td><strong>Topological Betti Entropy Variance</strong></td><td>0.004</td></tr>
+                <tr><td><strong>False Positive Reduction Ratio</strong></td><td><strong>84.2%</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPipelineLogs = () => {
+    return (
+      <div className="pl-content-grid" style={{ paddingBottom: 10 }}>
+        <div className="pl-console-full">
+          {pipelineLogsList.map((log, idx) => (
+            <div key={idx} className="console-line" style={{ marginBottom: 6 }}>
+              <span style={{ color: '#94a3b8' }}>[{log.time}]</span>{' '}
+              <span style={{ color: log.level === 'SUCCESS' ? '#10b981' : log.level === 'WARNING' ? '#fbbf24' : '#38bdf8' }}>
+                {log.level}:
+              </span>{' '}
+              {log.msg}
+            </div>
+          ))}
+          <div className="console-line" style={{ color: '#64748b' }}>-- Listening for live streaming logs on localhost:8080 --</div>
+        </div>
+        <div className="pl-console-footer">
+          <button className="pl-btn-action-trigger" onClick={() => {
+            setPipelineLogsList(prev => [
+              ...prev,
+              { time: new Date().toTimeString().split(' ')[0], level: 'INFO', msg: 'Manual health check diagnostic initiated.' },
+              { time: new Date().toTimeString().split(' ')[0], level: 'SUCCESS', msg: 'System healthy. Database connections: 3 active.' }
+            ]);
+          }}>
+            Run Health Check Diagnostic
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPipelineSettings = () => {
+    return (
+      <div className="pl-content-grid">
+        <div className="pl-card">
+          <div className="pl-card-header">
+            <h3 className="pl-card-title">Streamlit Pipeline Config</h3>
+          </div>
+          
+          <div className="pl-settings-grid">
+            <div className="pl-settings-field">
+              <label>Local Stream Server Port</label>
+              <input type="number" defaultValue="8080" />
+            </div>
+            
+            <div className="pl-settings-field">
+              <label>Data Processing Mode</label>
+              <select defaultValue="live">
+                <option value="live">Real-time Stream</option>
+                <option value="batch">Batch Interval (30s)</option>
+                <option value="debug">Static Simulation</option>
+              </select>
+            </div>
+
+            <div className="pl-settings-field" style={{ marginTop: 12 }}>
+              <label>Auto-refresh Interval</label>
+              <select defaultValue="2">
+                <option value="1">1 second</option>
+                <option value="2">2.5 seconds</option>
+                <option value="5">5 seconds</option>
+              </select>
+            </div>
+
+            <div className="pl-settings-field" style={{ marginTop: 12 }}>
+              <label>Incident Export Destination</label>
+              <select defaultValue="slack">
+                <option value="slack">Slack Webhook channel</option>
+                <option value="email">Security Admin Email</option>
+                <option value="siem">SIEM Syslog Forwarder</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (currentView === 'pipeline') {
+    return (
+      <div className="pipeline-app">
+        {/* Sidebar */}
+        <aside className="pl-sidebar">
+          <div className="pl-logo" onClick={() => { setCurrentView('landing'); }} style={{ cursor: 'pointer' }}>
+            <div className="pl-logo-icon">
+              <Shield size={16} strokeWidth={2.5} />
+            </div>
+            <div className="pl-logo-text">
+              <span className="pl-logo-title">QTD-HGNN Data Pipeline</span>
+              <span className="pl-logo-subtitle">Streamlit Dashboard</span>
+            </div>
+          </div>
+
+          <div className="pl-nav-label">Navigation</div>
+          <nav className="pl-nav">
+            {[
+              { id: 'Overview', label: 'Overview', icon: Layers },
+              { id: 'Data Explorer', label: 'Data Explorer', icon: FileText },
+              { id: 'Graph Analytics', label: 'Graph Analytics', icon: Network },
+              { id: 'Anomaly Detection', label: 'Anomaly Detection', icon: AlertTriangle },
+              { id: 'Model Insights', label: 'Model Insights', icon: Brain },
+              { id: 'Logs & Pipeline', label: 'Logs & Pipeline', icon: Activity },
+              { id: 'Settings', label: 'Settings', icon: Settings },
+            ].map(item => {
+              const Icon = item.icon;
+              const isActive = pipelineTab === item.id;
+              return (
+                <button 
+                  key={item.id} 
+                  className={`pl-nav-item ${isActive ? 'active' : ''}`}
+                  onClick={() => setPipelineTab(item.id)}
+                >
+                  <Icon size={14} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="pl-nav-label">Data Pipeline Status</div>
+          <div className="pipeline-status-list">
+            {[
+              { step: '1. Data Ingestion', desc: '3 Sources • Live' },
+              { step: '2. Preprocessing', desc: 'Normalization • Encoding' },
+              { step: '3. Graph Construction', desc: 'Nodes: 12,568 • Edges: 45,231' },
+              { step: '4. Feature Engineering', desc: '128 Features • Scaled' },
+              { step: '5. Anomaly Scoring', desc: 'Quantum-Inspired Model' },
+              { step: '6. Results Ready', desc: `Last updated: ${lastUpdateTime}` },
+            ].map((step, idx) => (
+              <div key={idx} className="pipeline-status-item">
+                <div className="pipeline-status-circle">✓</div>
+                <div className="pipeline-status-text">
+                  <span className="status-step-title">{step.step}</span>
+                  <span className="status-step-desc">{step.desc}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="pl-nav-label">Data Sources (Live)</div>
+          <div className="live-sources-list">
+            <div className="live-source-item">
+              <span className="source-dot green"></span>
+              <div className="source-text">
+                <span className="source-name">Transactions</span>
+                <span className="source-meta">15,231 records</span>
+              </div>
+            </div>
+            <div className="live-source-item">
+              <span className="source-dot green"></span>
+              <div className="source-text">
+                <span className="source-name">EDR Logs</span>
+                <span className="source-meta">8,472 events</span>
+              </div>
+            </div>
+            <div className="live-source-item">
+              <span className="source-dot green"></span>
+              <div className="source-text">
+                <span className="source-name">BGP Logs</span>
+                <span className="source-meta">2,102 updates</span>
+              </div>
+            </div>
+          </div>
+
+          <button className="pl-btn-back" onClick={() => { setCurrentView('landing'); }}>
+            <ArrowLeft size={12} />
+            <span>Back to Landing Page</span>
+          </button>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="pl-main">
+          {/* Header */}
+          <header className="pl-header">
+            <div className="pl-header-left">
+              <div className="pl-header-title-row">
+                <div className="pl-atom-icon">⚛</div>
+                <h1>Quantum Threat Defense</h1>
+              </div>
+              <p className="pl-subtitle">Python Data Pipeline + Streamlit Dashboard</p>
+            </div>
+
+            <div className="pl-header-right">
+              <div className="pl-toggle-container">
+                <span className="pl-toggle-label">Auto-refresh</span>
+                <label className="pl-switch">
+                  <input 
+                    type="checkbox" 
+                    checked={pipelineAutoRefresh} 
+                    onChange={(e) => setPipelineAutoRefresh(e.target.checked)} 
+                  />
+                  <span className="pl-slider"></span>
+                </label>
+              </div>
+
+              <div className="pl-timestamp">
+                <Activity size={12} />
+                <span>Last updated: {lastUpdateTime}</span>
+              </div>
+
+              <button className="pl-btn-export" onClick={handleExportReport}>
+                <ExternalLink size={14} />
+                <span>Export Report</span>
+              </button>
+            </div>
+          </header>
+
+          {/* Subviews switcher */}
+          {pipelineTab === 'Overview' && renderPipelineOverview()}
+          {pipelineTab === 'Data Explorer' && renderPipelineDataExplorer()}
+          {pipelineTab === 'Graph Analytics' && renderPipelineGraphAnalytics()}
+          {pipelineTab === 'Anomaly Detection' && renderPipelineAnomalyDetection()}
+          {pipelineTab === 'Model Insights' && renderPipelineModelInsights()}
+          {pipelineTab === 'Logs & Pipeline' && renderPipelineLogs()}
+          {pipelineTab === 'Settings' && renderPipelineSettings()}
+        </main>
+      </div>
+    );
+  }
 
   if (currentView === 'dashboard') {
     return (
@@ -1429,7 +2578,7 @@ function App() {
                 <p className="p-desc">
                   Data processing pipeline with graph algorithms and Streamlit dashboard for analytics.
                 </p>
-                <a href="#" className="btn-view-prototype" onClick={(e) => e.preventDefault()}>
+                <a href="#" className="btn-view-prototype" onClick={(e) => { e.preventDefault(); setCurrentView('pipeline'); }}>
                   <span>View Prototype</span>
                   <ArrowRight size={12} />
                 </a>
@@ -1465,7 +2614,7 @@ function App() {
                 <p className="p-desc">
                   FastAPI backend + React frontend with real-time data flow and enterprise architecture.
                 </p>
-                <a href="#" className="btn-view-prototype" onClick={(e) => e.preventDefault()}>
+                <a href="#" className="btn-view-prototype" onClick={(e) => { e.preventDefault(); setCurrentView('pipeline'); }}>
                   <span>View Prototype</span>
                   <ArrowRight size={12} />
                 </a>

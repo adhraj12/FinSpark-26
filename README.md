@@ -152,7 +152,7 @@ Our pipeline computes three mathematical stages. Each is independently valuable;
 
 Given a point cloud $\mathbb{X} = \{x_1, \ldots, x_n\}$ of telemetry feature vectors (packet size, latency, entropy), we construct a **Vietoris-Rips complex** at increasing radius $\epsilon$:
 
-$$\text{VR}_\epsilon(\mathbb{X}) = \bigl\{ \sigma \subseteq \mathbb{X} \;\big|\; d(x_i, x_j) \leq \epsilon \;\;\forall\; x_i, x_j \in \sigma \bigr\}$$
+$$\text{VR}_\epsilon(\mathbb{X}) = \lbrace \sigma \subseteq \mathbb{X} \;\mid\; d(x_i, x_j) \leq \epsilon \;\;\forall\; x_i, x_j \in \sigma \rbrace$$
 
 As $\epsilon$ increases from $0 \to \infty$, topological features *appear* (birth) and *disappear* (death). The $k$-th Betti number $\beta_k$ counts the number of $k$-dimensional holes that **persist** across scales:
 

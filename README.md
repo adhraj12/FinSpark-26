@@ -258,7 +258,7 @@ This is rooted in cooperative game theory: each feature is a "player" in a coali
 ```
 
 > [!IMPORTANT]
-> **Why this matters for judges:** This is not a black-box score. Every flagged transaction comes with a *mathematical proof* of why it was flagged. SOC analysts can verify the reasoning, and auditors can trace the logic — satisfying EU AI Act and RBI compliance mandates.
+> **Why this matters:** This is not a black-box score. Every flagged transaction comes with a *mathematical proof* of why it was flagged. SOC analysts can verify the reasoning, and auditors can trace the logic — satisfying EU AI Act and RBI compliance mandates.
 
 ---
 

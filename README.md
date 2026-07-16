@@ -40,6 +40,19 @@
 
 ---
 
+<div align="center">
+
+### 🚀 Quick Links
+
+[![▶ Live Prototype](https://img.shields.io/badge/▶_Live_Prototype-finspark--26.vercel.app-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://finspark-26.vercel.app/)
+[![🎬 Video Demo](https://img.shields.io/badge/🎬_Video_Demo-YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/fhNcWKOpNeE)
+[![📓 Colab Notebook](https://img.shields.io/badge/📓_Colab_Notebook-Open_in_Colab-F9AB00?style=for-the-badge&logo=googlecolab&logoColor=white)](https://colab.research.google.com/drive/1Xqa-_RFAUtU7rjBGuBwso0yP_5wztJah?usp=sharing)
+[![📊 Slide Deck](https://img.shields.io/badge/📊_Slide_Deck-Google_Slides-FBBC04?style=for-the-badge&logo=googleslides&logoColor=white)](https://docs.google.com/presentation/d/1hWNI8xJ4-I3kt8cXDVwOz7dOARXbBCfipRJ05zZfg_U/edit?usp=sharing)
+
+</div>
+
+---
+
 > **Abstract.** Current Security Information and Event Management (SIEM) systems operate on siloed, pairwise-event correlation — fundamentally incapable of detecting the multi-hop, structurally subtle exfiltration patterns produced by Harvest-Now-Decrypt-Later (HNDL) campaigns. We present **QTD-HGNN**, a novel framework that (1) lifts raw network telemetry into simplicial complexes and computes persistent Betti numbers to capture the *topological shape* of traffic; (2) passes these topological signatures alongside node features through a Graph Convolutional Network for binary threat classification; and (3) decomposes every classification into per-feature Shapley values, rendering the model fully transparent to SOC analysts. Our prototype demonstrates real-time inference over dynamic graphs streamed via WebSocket, achieving sub-80 ms latency per classification cycle.
 
 ---
@@ -250,6 +263,14 @@ This is rooted in cooperative game theory: each feature is a "player" in a coali
 ---
 
 ## 4. System Architecture
+
+<div align="center">
+
+![QTD-HGNN 5-Stage Architecture Pipeline](assets/image.png)
+
+*Fig. 1 — End-to-end pipeline: Ingestion → TDA Engine → PyTorch GNN → SHAP XAI → React Dashboard*
+
+</div>
 
 ```mermaid
 flowchart LR
